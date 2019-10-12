@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QByteArray>
 #include <QDir>
+#include <QDataStream>
 #include <QDebug>
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
@@ -10,6 +11,12 @@
 
 using namespace std;
 using namespace cv;
+
+#define W 384
+#define H 384
+
+QString separate = ",";
+QString training_data = "E:/TuDienHOA/01_DuLieu/CameraCapture/02_Data/cha_jpg_nonascii_original/";
 
 Mat ReadImageFromNonAsciiName(QString path)
 {
@@ -79,11 +86,28 @@ int ImageLabeling(Mat image)
 
 int main(int argc, char *argv[])
 {
+    QByteArray sepa = separate.toUtf8();
+
+    // End line
+    QByteArray line_end;
+    line_end.resize(2);
+    line_end[0] = 0x0D;
+    line_end[1] = 0x0A;
+
+    QFile outfile("E:/TuDienHOA/01_DuLieu/CameraCapture/02_Data/chinese_letter.data");
+    outfile.open(QIODevice::WriteOnly);
+    QDataStream outstream(&outfile);
+
     uint numofimages = 1;
-    QDir directory("E:/TuDienHOA/01_DuLieu/CameraCapture/02_Data/cha_jpg_nonascii/");
+    QDir directory(training_data);
     QStringList images = directory.entryList(QStringList() << "*.jpg" << "*.JPG",QDir::Files);
     foreach(QString filename, images) {
-        QString path = "E:/TuDienHOA/01_DuLieu/CameraCapture/02_Data/cha_jpg_nonascii/" + filename;
+        if(numofimages >= 2)
+        {
+            outstream.writeRawData(line_end.data(), 2);
+        }
+
+        QString path = training_data + filename;
         Mat image = ReadImageFromNonAsciiName(path);
 
         // Convert image to grayscale
@@ -111,7 +135,30 @@ int main(int argc, char *argv[])
             << " - Black pixels: " << black_pixels
             << " - White pixels: " << white_pixels
             << std::endl;
+
+        QByteArray myStringChars = filename.remove(1, 4).toUtf8();
+
+        // write character
+        outstream.writeRawData(myStringChars.data(), 3);
+        outstream.writeRawData(sepa.data(), 1);
+
+        // write number of black
+        QString s_black_pixels = QString::number(black_pixels * 99 / (W * H));
+        outstream.writeRawData(s_black_pixels.toUtf8().data(), s_black_pixels.size());
+        outstream.writeRawData(sepa.data(), 1);
+
+        // write number of black
+        QString s_white_pixels = QString::number(white_pixels * 99 / (W * H));
+        outstream.writeRawData(s_white_pixels.toUtf8().data(), s_white_pixels.size());
+        outstream.writeRawData(sepa.data(), 1);
+
+        // write Image labeling
+        QString s_label = QString::number(numoflabel);
+        outstream.writeRawData(s_label.toUtf8().data(), s_label.size());
     }
+
+    outfile.flush();
+    outfile.close();
 
     return 0;
 }
