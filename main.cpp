@@ -46,10 +46,16 @@ int ImageLabeling(Mat image)
 {
     int result = 0;
 
+    cv::Mat gray_mat(image.size(), CV_8U);
+    cv::cvtColor(image, gray_mat, COLOR_BGR2GRAY);
+
+    Mat image_th;
+    threshold(gray_mat, image_th, 10, 255, cv::THRESH_BINARY_INV);
+
     Mat labels;
     Mat stats;
     Mat centroids;
-    cv::connectedComponentsWithStats(image, labels, stats, centroids);
+    cv::connectedComponentsWithStats(image_th, labels, stats, centroids);
 
     for (int i = 0; i < stats.rows; i++)
     {
@@ -97,7 +103,7 @@ int main(int argc, char *argv[])
         CountBlackWhite(bw, &black_pixels, &white_pixels);
 
         // Image labeling
-        uint numoflabel = ImageLabeling(bw);
+        uint numoflabel = ImageLabeling(image);
 
         cout
             << "Index: " << numofimages++
