@@ -16,7 +16,8 @@ using namespace cv;
 #define H 384
 
 QString separate = ",";
-QString training_data = "E:/TuDienHOA/01_DuLieu/CameraCapture/02_Data/cha_jpg_nonascii_original/";
+QString training_data = "";
+QByteArray sepa;
 
 Mat ReadImageFromNonAsciiName(QString path)
 {
@@ -49,9 +50,11 @@ void CountBlackWhite(Mat bw, uint* black_pixels, uint* white_pixels)
     *white_pixels = white;
 }
 
-int ImageLabeling(Mat image)
+int ImageLabeling(Mat image, QDataStream&outstream)
 {
     int result = 0;
+    uint total_w = 0;
+    uint total_h = 0;
 
     cv::Mat gray_mat(image.size(), CV_8U);
     cv::cvtColor(image, gray_mat, COLOR_BGR2GRAY);
@@ -74,6 +77,8 @@ int ImageLabeling(Mat image)
         if((w != image.cols) && (h != image.rows))
         {
             result++;
+            total_w += (uint)w;
+            total_h += (uint)h;
 //            std::cout << "x=" << x << " y=" << y << " w=" << w << " h=" << h << std::endl;
 //            Scalar color(255, 0, 0);
 //            Rect rect(x, y, w, h);
@@ -81,12 +86,39 @@ int ImageLabeling(Mat image)
         }
     }
 
+    // write Image labeling
+    QString s_label = QString::number(result);
+    outstream.writeRawData(sepa.data(), 1);
+    outstream.writeRawData(s_label.toUtf8().data(), s_label.size());
+
+    QString s_total_w = QString::number(total_w * 99 / (W));
+    QString s_total_h = QString::number(total_h * 99 / (H));
+
+    outstream.writeRawData(sepa.data(), 1);
+    outstream.writeRawData(s_total_w.toUtf8().data(), s_total_w.size());
+
+    outstream.writeRawData(sepa.data(), 1);
+    outstream.writeRawData(s_total_h.toUtf8().data(), s_total_h.size());
+
     return result;
+}
+
+void ImageContours(Mat image, QDataStream&outstream)
+{
+    // Find all the Contours in the thresholded image
+    vector<vector<Point>> contours;
+    findContours(image, contours, RETR_LIST, CHAIN_APPROX_NONE);
+
+    outstream.writeRawData(sepa.data(), 1);
+    QString s_contours = QString::number(contours.size());
+    outstream.writeRawData(s_contours.toUtf8().data(), s_contours.size());
 }
 
 int main(int argc, char *argv[])
 {
-    QByteArray sepa = separate.toUtf8();
+    QString defaultLocation = PROJECT_PATH;
+    training_data = defaultLocation + "/data/";
+    sepa = separate.toUtf8();
 
     // End line
     QByteArray line_end;
@@ -94,7 +126,7 @@ int main(int argc, char *argv[])
     line_end[0] = 0x0D;
     line_end[1] = 0x0A;
 
-    QFile outfile("E:/TuDienHOA/01_DuLieu/CameraCapture/02_Data/chinese_letter.data");
+    QFile outfile(defaultLocation + "/chinese_letter.data");
     outfile.open(QIODevice::WriteOnly);
     QDataStream outstream(&outfile);
 
@@ -126,15 +158,7 @@ int main(int argc, char *argv[])
 
         CountBlackWhite(bw, &black_pixels, &white_pixels);
 
-        // Image labeling
-        uint numoflabel = ImageLabeling(image);
-
-        cout
-            << "Index: " << numofimages++
-            << " - Number of label: " << numoflabel
-            << " - Black pixels: " << black_pixels
-            << " - White pixels: " << white_pixels
-            << std::endl;
+        cout << "Index: " << numofimages++ << std::endl;
 
         QByteArray myStringChars = filename.remove(1, 4).toUtf8();
 
@@ -150,11 +174,13 @@ int main(int argc, char *argv[])
         // write number of black
         QString s_white_pixels = QString::number(white_pixels * 99 / (W * H));
         outstream.writeRawData(s_white_pixels.toUtf8().data(), s_white_pixels.size());
-        outstream.writeRawData(sepa.data(), 1);
 
-        // write Image labeling
-        QString s_label = QString::number(numoflabel);
-        outstream.writeRawData(s_label.toUtf8().data(), s_label.size());
+        // Image labeling
+        ImageLabeling(image, outstream);
+
+        // Contours
+        ImageContours(bw, outstream);
+
     }
 
     outfile.flush();

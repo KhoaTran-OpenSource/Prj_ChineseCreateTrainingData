@@ -67,3 +67,6 @@ DEPENDPATH += C:/Workspace/OpenCV/opencv/modules/video/include/
 DEPENDPATH += C:/Workspace/OpenCV/opencv/modules/videoio/include/
 DEPENDPATH += C:/Workspace/OpenCV/opencv/modules/world/include/
 DEPENDPATH += C:/Workspace/OpenCV/opencv/build
+
+# Default location for workspace
+DEFINES += PROJECT_PATH=\\\"$$PWD\\\"
