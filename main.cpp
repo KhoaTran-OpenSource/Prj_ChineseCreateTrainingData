@@ -82,10 +82,6 @@ int ImageLabeling(Mat image, QDataStream&outstream)
             result++;
             total_w += (uint)w;
             total_h += (uint)h;
-//            std::cout << "x=" << x << " y=" << y << " w=" << w << " h=" << h << std::endl;
-//            Scalar color(255, 0, 0);
-//            Rect rect(x, y, w, h);
-//            cv::rectangle(image, rect, color);
 
             // left
             if(left == 0) left = x;
@@ -104,12 +100,6 @@ int ImageLabeling(Mat image, QDataStream&outstream)
             else { if(bottom < (y + h)) bottom = y + h; }
         }
     }
-    //std::cout << "left=" << left << " top=" << top << " right=" << right << " bottom=" << bottom << std::endl;
-
-//    Scalar color(255, 0, 0);
-//    Rect rect(left, top, right - left, bottom - top);
-//    cv::rectangle(image, rect, color);
-//    imshow("keypoints", image); waitKey(0);
 
     // write Image labeling
     QString s_label = QString::number(result);
@@ -133,6 +123,28 @@ int ImageLabeling(Mat image, QDataStream&outstream)
     outstream.writeRawData(sepa.data(), 1);
     QString s_actual_height = QString::number(bottom - top);
     outstream.writeRawData(s_actual_height.toUtf8().data(), s_actual_height.size());
+
+    // Black and white counting
+    uint black_pixels = 0;
+    uint white_pixels = 0;
+
+    for (int m = left; m < (right - left); m++) {
+        for (int n = top; n < (bottom - top); n++) {
+            uchar pixelGrayValue = image_th.at<uchar>(n, m);
+            if (pixelGrayValue) white_pixels++;
+            else black_pixels++;
+        }
+    }
+
+    // write number of black
+    outstream.writeRawData(sepa.data(), 1);
+    QString s_black_pixels = QString::number(black_pixels * 99 / ((right - left) * (bottom - top)));
+    outstream.writeRawData(s_black_pixels.toUtf8().data(), s_black_pixels.size());
+
+    // write number of black
+    outstream.writeRawData(sepa.data(), 1);
+    QString s_white_pixels = QString::number(white_pixels * 99 / ((right - left) * (bottom - top)));
+    outstream.writeRawData(s_white_pixels.toUtf8().data(), s_white_pixels.size());
 
     return result;
 }
@@ -185,29 +197,12 @@ int main(int argc, char *argv[])
         threshold(gray, bw, 50, 255, THRESH_BINARY | THRESH_OTSU);imshow("Display Image", bw);
         //! [pre-process]
 
-        // Black and white counting
-        //! [black and white]
-        uint black_pixels = 0;
-        uint white_pixels = 0;
-
-        CountBlackWhite(bw, &black_pixels, &white_pixels);
-
         cout << "Index: " << numofimages++ << std::endl;
 
         QByteArray myStringChars = filename.remove(1, 4).toUtf8();
 
         // write character
         outstream.writeRawData(myStringChars.data(), 3);
-        outstream.writeRawData(sepa.data(), 1);
-
-        // write number of black
-        QString s_black_pixels = QString::number(black_pixels * 99 / (W * H));
-        outstream.writeRawData(s_black_pixels.toUtf8().data(), s_black_pixels.size());
-        outstream.writeRawData(sepa.data(), 1);
-
-        // write number of black
-        QString s_white_pixels = QString::number(white_pixels * 99 / (W * H));
-        outstream.writeRawData(s_white_pixels.toUtf8().data(), s_white_pixels.size());
 
         // Image labeling
         ImageLabeling(image, outstream);
