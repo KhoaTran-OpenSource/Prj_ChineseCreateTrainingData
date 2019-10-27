@@ -56,6 +56,9 @@ int ImageLabeling(Mat image, QDataStream&outstream)
     uint total_w = 0;
     uint total_h = 0;
 
+    //find boundary
+    uint left = 0, top = 0, right = 0, bottom = 0;
+
     cv::Mat gray_mat(image.size(), CV_8U);
     cv::cvtColor(image, gray_mat, COLOR_BGR2GRAY);
 
@@ -83,8 +86,30 @@ int ImageLabeling(Mat image, QDataStream&outstream)
 //            Scalar color(255, 0, 0);
 //            Rect rect(x, y, w, h);
 //            cv::rectangle(image, rect, color);
+
+            // left
+            if(left == 0) left = x;
+            else { if(x < left) left = x; }
+
+            // top
+            if(top == 0) top = y;
+            else { if(y < top) top = y; }
+
+            // right
+            if(right == 0) right = x + w;
+            else { if(right < (x + w)) right = x + w; }
+
+            // bottom
+            if(bottom == 0) bottom = y + h;
+            else { if(bottom < (y + h)) bottom = y + h; }
         }
     }
+    //std::cout << "left=" << left << " top=" << top << " right=" << right << " bottom=" << bottom << std::endl;
+
+//    Scalar color(255, 0, 0);
+//    Rect rect(left, top, right - left, bottom - top);
+//    cv::rectangle(image, rect, color);
+//    imshow("keypoints", image); waitKey(0);
 
     // write Image labeling
     QString s_label = QString::number(result);
@@ -99,6 +124,15 @@ int ImageLabeling(Mat image, QDataStream&outstream)
 
     outstream.writeRawData(sepa.data(), 1);
     outstream.writeRawData(s_total_h.toUtf8().data(), s_total_h.size());
+
+    // boundary
+    outstream.writeRawData(sepa.data(), 1);
+    QString s_actual_width = QString::number(right - left);
+    outstream.writeRawData(s_actual_width.toUtf8().data(), s_actual_width.size());
+
+    outstream.writeRawData(sepa.data(), 1);
+    QString s_actual_height = QString::number(bottom - top);
+    outstream.writeRawData(s_actual_height.toUtf8().data(), s_actual_height.size());
 
     return result;
 }
